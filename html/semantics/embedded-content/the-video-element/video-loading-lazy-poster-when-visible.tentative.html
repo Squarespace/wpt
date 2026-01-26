@@ -4,7 +4,7 @@
 <script src="/resources/testharnessreport.js"></script>
 
 <style>
-  #target {
+  .below-viewport {
     position: absolute;
     top: 1000vh;
   }
@@ -13,11 +13,11 @@
 
 <script>
   const t = async_test(
-    "Video with loading=lazy does not fetch poster while not visible, then fetches poster once scrolled into view"
+    "Video with loading=lazy does not fetch poster while not visible, then fetches poster once moved into view"
   );
 
   const video = document.createElement("video");
-  video.id = "target";
+  video.className = "below-viewport";
   video.loading = "lazy";
   video.poster = "/media/2048x1360-random.jpg?t=" + Date.now();
   const posterUrl = new URL(video.poster, location.href).href;
@@ -29,13 +29,18 @@
     const entries = performance.getEntriesByName(posterUrl);
     assert_equals(entries.length, 0, "Poster should not be fetched when not visible");
 
-    // Step 2: Scroll into view => poster should load.
-    video.scrollIntoView();
+    // Step 2: Move into viewport => poster should load.
+    video.style.top = "0";
 
-    video.addEventListener("loadedmetadata", () => {
-      const entries = performance.getEntriesByName(posterUrl);
-      assert_greater_than(entries.length, 0, "Poster should be fetched after scrolling into view");
-      t.done();
+    // Wait for IntersectionObserver and poster to load
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        t.step_timeout(() => {
+          const entries = performance.getEntriesByName(posterUrl);
+          assert_greater_than(entries.length, 0, "Poster should be fetched after moving into view");
+          t.done();
+        }, 2000);
+      });
     });
   }, 2000);
 </script>
